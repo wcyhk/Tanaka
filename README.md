@@ -1,6 +1,6 @@
 ## 什麼是Tanaka?
 
-[Tanaka](https://yuenhk.github.io/Tanaka)(日文音譯：田中)是一個維修記錄工具，用於回報和管理組織內一切維修項目。
+[Tanaka](https://wcy.hk/Tanaka)(日文音譯：田中)是一個維修記錄工具，用於回報和管理組織內一切維修項目。
 
 [![Everything Is AWESOME](https://imgur.com/5hQN7h2.png)](https://youtu.be/sC49RAow340 "Everything Is AWESOME")
 
