@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function signedIn() { return request.auth != null && request.auth.token.email_verified == true && request.auth.token.firebase.sign_in_provider == 'google.com'; }
+  function reporterName() { let name = request.auth.token.get('name', ''); return name is string ? name : ''; }
+  function admin() { return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())) && get(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())).data.active == true; }
+  function facilitiesValid(items) { return items is list && items.size() <= 7 && items.hasOnly(['toilet','plumbing','lighting','aircon','projector','computer','door']); }
+  function validLocation() { return request.resource.data.keys().hasOnly(['name','active','facilities','updatedAt']) && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80 && request.resource.data.active is bool && facilitiesValid(request.resource.data.facilities) && request.resource.data.updatedAt == request.time; }
+  function validIssue() { return request.resource.data.keys().hasOnly(['name','active','requiredFacilities','updatedAt']) && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 80 && request.resource.data.active is bool && facilitiesValid(request.resource.data.requiredFacilities) && request.resource.data.updatedAt == request.time; }
+  function validPair() {
+   let location = get(/databases/$(database)/documents/locations/$(request.resource.data.locationId)).data;
+   let issue = get(/databases/$(database)/documents/issueTypes/$(request.resource.data.issueTypeId)).data;
+   return location.active == true && issue.active == true && location.facilities.hasAll(issue.requiredFacilities) && request.resource.data.locationName == location.name && request.resource.data.issueTypeName == issue.name;
+  }
+  match /locations/{id} { allow read: if signedIn(); allow create, update: if admin() && validLocation(); }
+  match /issueTypes/{id} { allow read: if signedIn(); allow create, update: if admin() && validIssue(); }
+  match /admins/{email} {
+   allow get: if signedIn() && (email == request.auth.token.email.lower() || admin());
+   allow list: if admin();
+   allow create, update: if admin() && request.resource.data.keys().hasOnly(['email','active','updatedAt']) && request.resource.data.email == email && request.resource.data.active is bool && request.resource.data.updatedAt == request.time && (email != request.auth.token.email.lower() || request.resource.data.active == true);
+  }
+  match /tickets/{id} {
+   allow read: if signedIn();
+   allow create: if signedIn() && request.resource.data.keys().hasOnly(['locationId','issueTypeId','locationName','issueTypeName','description','priority','status','reporterUid','reporterName','createdAt','updatedAt','staffNote']) && request.resource.data.reporterUid == request.auth.uid && request.resource.data.reporterName is string && request.resource.data.reporterName == reporterName() && request.resource.data.status == 'new' && request.resource.data.staffNote == '' && request.resource.data.priority in ['normal','urgent'] && request.resource.data.description is string && request.resource.data.description.trim().size() >= 5 && request.resource.data.description.size() <= 2000 && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time && validPair();
+   allow update: if admin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','staffNote','updatedAt']) && request.resource.data.status in ['new','working','waiting','completed','cancelled'] && request.resource.data.staffNote is string && request.resource.data.staffNote.size() <= 2000 && request.resource.data.updatedAt == request.time;
+  }
+  match /{document=**} { allow read, write: if false; }
+ }
+}

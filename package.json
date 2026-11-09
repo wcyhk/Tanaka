@@ -1,0 +1,17 @@
+{
+  "name": "tanaka-maintenance",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.12.0"
+  },
+  "scripts": {
+    "test": "node --test tests/model.test.mjs",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-tanaka \"node --test tests/rules.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "6.0.0",
+    "firebase": "13.2.0",
+    "firebase-tools": "15.35.0"
+  }
+}

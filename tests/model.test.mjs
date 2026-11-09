@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {DEFAULT_LOCATIONS,DEFAULT_ISSUES,compatible,validateReport,reportCsv} from '../model.mjs';
+const hall=DEFAULT_LOCATIONS[0],toilet=DEFAULT_LOCATIONS[1],leak=DEFAULT_ISSUES[0];
+test('a hall without a toilet cannot report a toilet leak',()=>{assert.equal(compatible(hall,leak),false);assert.match(validateReport({location:hall,issue:leak,description:'地面發現漏水情況',priority:'normal'}),/沒有/)});
+test('a real toilet with plumbing accepts the same problem',()=>assert.equal(validateReport({location:toilet,issue:leak,description:'水箱接口持續漏水',priority:'urgent'}),''));
+test('inactive locations and issue types cannot be selected',()=>{assert.equal(compatible({...toilet,active:false},leak),false);assert.equal(compatible(toilet,{...leak,active:false}),false)});
+test('changed facilities invalidate an earlier selection',()=>assert.equal(compatible({...toilet,facilities:['lighting']},leak),false));
+test('general repairs are available without inventing facilities',()=>assert.equal(compatible(hall,DEFAULT_ISSUES.at(-1)),true));
+test('missing and invalid fields are rejected',()=>{assert.ok(validateReport({issue:leak,description:'說明',priority:'normal'}));assert.ok(validateReport({location:toilet,issue:leak,description:' ',priority:'normal'}));assert.ok(validateReport({location:toilet,issue:leak,description:'水箱接口持續漏水',priority:'admin'}))});
+test('CSV exports escape quotes, newlines and spreadsheet formulas',()=>{const csv=reportCsv([{id:'x',description:'=HYPERLINK("bad")\nnext',locationName:'=1+1',status:'new',priority:'normal'}]);assert.ok(csv.startsWith('\ufeff'));assert.match(csv,/"'=1\+1"/);assert.match(csv,/"'=HYPERLINK\(""bad""\)\nnext"/)});
